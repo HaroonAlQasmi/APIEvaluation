@@ -27,8 +27,12 @@ def string_to_values(s: str) -> list[int]:
         if s[i].lower() == 'z':
             slot = s[i]
             i += 1
-            # extend slot while the last char is 'z'
-            while slot and slot[-1].lower() == 'z' and i < len(s):
+            # Extend slot while the last char is 'z' and there are more characters
+            while i < len(s) and s[i].lower() == 'z':
+                slot += s[i]
+                i += 1
+            # Add the next character after the z-chain, if it exists
+            if i < len(s):
                 slot += s[i]
                 i += 1
             slots.append(slot)

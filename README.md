@@ -28,3 +28,7 @@ If you ever wish to clear the database, use the following command in CMD:
 ```
 curl -X DELETE "http://127.0.0.1:8888/clear/"
 ```
+
+- PS: The data is visiable when the server is running you can view it using MongoDBCompass.
+- To View the data while server is running just enter the database through mongodb://localhost:27017/
+- The string_data should appear in a database named api_database.

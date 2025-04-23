@@ -8,6 +8,8 @@ import json
 from DecriptionAlgorithm import string_to_values
 import uvicorn
 import base64
+import atexit
+import os
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -17,11 +19,14 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["api_database"]
 collection = db["string_data"]
 
-# Paths to the RSA keys change into your own path make sure to do double slashes so they become readable to the script 
+# Paths to the RSA keys
 PRIVATE_KEY_PATH = "C:\\Users\\Codeline User\\Desktop\\Haroon_Folder\\keys\\private.pem"
 PUBLIC_KEY_PATH = "C:\\Users\\Codeline User\\Desktop\\Haroon_Folder\\keys\\public.pem"
 
-# Load RSA private key if your key requires a password insert it instead of none
+# Path to the DecriptionAlgorithm file
+DECRIPTION_ALGORITHM_PATH = "C:\\Users\\Codeline User\\Desktop\\Haroon_Folder\\DecriptionAlgorithm.cpython"
+
+# Load RSA private key
 with open(PRIVATE_KEY_PATH, "rb") as private_key_file:
     private_key = serialization.load_pem_private_key(
         private_key_file.read(),
@@ -31,8 +36,6 @@ with open(PRIVATE_KEY_PATH, "rb") as private_key_file:
 # Load RSA public key
 with open(PUBLIC_KEY_PATH, "rb") as public_key_file:
     public_key = serialization.load_pem_public_key(public_key_file.read())
-
-# ...existing code...
 
 # Helper functions for encryption and decryption
 def encrypt_data(data: str) -> bytes:
@@ -49,14 +52,9 @@ def decrypt_data(encrypted_data: bytes) -> str:
 
 # Debugging log setup
 DEBUG_LOG_FILE_PATH = "debug.log"
-if not DEBUG_LOG_FILE_PATH:
-    # Create the debug log file if it doesn't exist
-    with open(DEBUG_LOG_FILE_PATH, "w") as f:
-        f.write("")
-
 logging.basicConfig(
     filename=DEBUG_LOG_FILE_PATH,
-    level=logging.DEBUG,  # Set logging level to DEBUG
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
@@ -64,18 +62,92 @@ logging.basicConfig(
 class StringInput(BaseModel):
     input_string: str
 
-# Helper functions for encryption and decryption
-def encrypt_data(data: str) -> bytes:
-    return public_key.encrypt(
-        data.encode(),
-        padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None),
-    )
+# Encrypt all data in the database
+def encrypt_database():
+    try:
+        records = collection.find()
+        for record in records:
+            if not record.get("encrypted", False):  # Skip already encrypted records
+                # Convert non-string data to JSON strings
+                input_data = record["input"]
+                output_data = record["output"]
 
-def decrypt_data(encrypted_data: bytes) -> str:
-    return private_key.decrypt(
-        encrypted_data,
-        padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None),
-    ).decode()
+                if isinstance(input_data, list):
+                    input_data = json.dumps(input_data)
+                if isinstance(output_data, list):
+                    output_data = json.dumps(output_data)
+
+                encrypted_input = base64.b64encode(encrypt_data(input_data)).decode('utf-8')
+                encrypted_output = base64.b64encode(encrypt_data(json.dumps(output_data))).decode('utf-8')
+                collection.update_one(
+                    {"_id": record["_id"]},
+                    {"$set": {"input": encrypted_input, "output": encrypted_output, "encrypted": True}}
+                )
+        logging.debug("Database encrypted successfully on server shutdown.")
+    except Exception as e:
+        logging.error(f"Error encrypting database: {str(e)}")
+
+# Decrypt all data in the database
+def decrypt_database():
+    try:
+        records = collection.find()
+        for record in records:
+            if record.get("encrypted", False):  # Only decrypt encrypted records
+                decrypted_input = decrypt_data(base64.b64decode(record["input"]))
+                decrypted_output = json.loads(decrypt_data(base64.b64decode(record["output"])))
+
+                # Convert JSON strings back to lists if necessary
+                try:
+                    decrypted_input = json.loads(decrypted_input)
+                except json.JSONDecodeError:
+                    pass  # Keep as string if not JSON
+
+                try:
+                    decrypted_output = json.loads(decrypted_output)
+                except json.JSONDecodeError:
+                    pass  # Keep as string if not JSON
+
+                collection.update_one(
+                    {"_id": record["_id"]},
+                    {"$set": {"input": decrypted_input, "output": decrypted_output, "encrypted": False}}
+                )
+        logging.debug("Database decrypted successfully on server startup.")
+    except Exception as e:
+        logging.error(f"Error decrypting database: {str(e)}")
+
+# Encrypt the DecriptionAlgorithm file
+def encrypt_file(file_path):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as file:
+                file_data = file.read()
+            encrypted_data = encrypt_data(file_data.decode())
+            with open(file_path, "wb") as file:
+                file.write(encrypted_data)
+            logging.debug(f"File {file_path} encrypted successfully.")
+    except Exception as e:
+        logging.error(f"Error encrypting file {file_path}: {str(e)}")
+
+# Decrypt the DecriptionAlgorithm file
+def decrypt_file(file_path):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as file:
+                encrypted_data = file.read()
+            decrypted_data = decrypt_data(encrypted_data)
+            with open(file_path, "w") as file:
+                file.write(decrypted_data)
+            logging.debug(f"File {file_path} decrypted successfully.")
+    except Exception as e:
+        logging.error(f"Error decrypting file {file_path}: {str(e)}")
+
+# Decrypt database and file on server startup
+decrypt_database()
+decrypt_file(DECRIPTION_ALGORITHM_PATH)
+
+# Encrypt database and file on server shutdown
+atexit.register(encrypt_database)
+atexit.register(lambda: encrypt_file(DECRIPTION_ALGORITHM_PATH))
 
 # Add a GET endpoint to process input via query parameters
 @app.get("/process/")
@@ -87,12 +159,8 @@ async def process_string_via_get(convert_measurements: str):
         # Serialize the output to a JSON string
         output_json = json.dumps(output)
 
-        # Encrypt input and output with Base64 encoding
-        encrypted_input = base64.b64encode(encrypt_data(convert_measurements)).decode('utf-8')
-        encrypted_output = base64.b64encode(encrypt_data(output_json)).decode('utf-8')
-
-        # Store in MongoDB
-        collection.insert_one({"input": encrypted_input, "output": encrypted_output})
+        # Store in MongoDB without encryption (encryption happens on shutdown)
+        collection.insert_one({"input": convert_measurements, "output": output, "encrypted": False})
 
         # Log the request
         logging.debug(f"Processed input: {convert_measurements}, Output: {output}")
@@ -111,9 +179,25 @@ async def retrieve_data():
         decrypted_data = []
 
         for record in records:
-            # Decode Base64 before decryption
-            decrypted_input = decrypt_data(base64.b64decode(record["input"]))
-            decrypted_output = json.loads(decrypt_data(base64.b64decode(record["output"])))  # Deserialize JSON string
+            # If data is encrypted, decrypt it
+            if record.get("encrypted", False):
+                decrypted_input = decrypt_data(base64.b64decode(record["input"]))
+                decrypted_output = json.loads(decrypt_data(base64.b64decode(record["output"])))
+
+                # Convert JSON strings back to lists if necessary
+                try:
+                    decrypted_input = json.loads(decrypted_input)
+                except json.JSONDecodeError:
+                    pass  # Keep as string if not JSON
+
+                try:
+                    decrypted_output = json.loads(decrypted_output)
+                except json.JSONDecodeError:
+                    pass  # Keep as string if not JSON
+            else:
+                decrypted_input = record["input"]
+                decrypted_output = record["output"]
+
             decrypted_data.append({"input": decrypted_input, "output": decrypted_output})
 
         # Log the retrieval
@@ -138,4 +222,7 @@ async def clear_database():
 
 # Run the API locally on port 8888
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8888)
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=8888)
+    except KeyboardInterrupt:
+        logging.info("Server is shutting down...")

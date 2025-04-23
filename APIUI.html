@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Measurement Conversion UI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="APIUI.js"></script>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <h2 class="text-center mb-4">Measurement Conversion API User Interface</h2>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="user_string" class="form-label">Enter String</label>
+                    <div class="input-group">
+                        <input type="text" id="user_string" class="form-control" placeholder="Enter your string here">
+                        <button onclick="input_string()" id="input_button" class="btn btn-primary">Submit</button>
+                    </div>
+                </div>
+                <div id="result_div" ></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <button onclick="getHistory()" id="show_button" class="btn btn-info w-100 mb-3">Show History</button>
+                <div id="history_div" ></div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button onclick="clearDiv()" id="clear_button" class="btn btn-danger">Clear</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,34 +1,57 @@
 # APIEvaluation
 
-Make sure you have:
+## Prerequisites
 
-- Python 3.8 or later.
-- MongoDB installed and running on `localhost:27017`.
-- Required Python packages: `fastapi`, `uvicorn`, `pymongo`, `cryptography`.
-- `DecriptionAlgorithm.py` file in the same directory as the server script.
-- Write permissions for logging.
-- Make sure you give permissions to the port to be used (here it is port `8888`).
-- Change the path of the RSA keys in the code to your own keys' path.
-- **Make sure to delete `__pycache__` and `debug.log`. They are there as a proof of concept and may cause errors.**
+Ensure the following requirements are met before running the application:
 
-Run the `APIEv_Server_app.py` file and use the following URL format to test strings:
+- **Python Version**: Python 3.8 or later.
+- **MongoDB**: Installed and running on `localhost:27017`.
+- **Python Packages**: Install the required packages: `fastapi`, `uvicorn`, `pymongo`, `cryptography`.
+- **Script Dependency**: Place the `DecriptionAlgorithm.py` file in the same directory as the server script.
+- **Logging Permissions**: Ensure write permissions for logging.
+- **Port Permissions**: Grant permissions for the port to be used (default is port `8888`).
+- **RSA Keys**: Update the path of the RSA keys in the code to match your own keys' path.
+- **Cleanup**: Delete the `__pycache__` folder and `debug.log` file. These are for proof of concept and may cause errors.
 
-```
-http://(Your IP Address):8888/process/?convert_measurements=(the string you wish to test)
-```
+---
 
-To view the history database, use the following URL format:
+## Running the Server
 
-```
-http://(Your IP Address):8888/retrieve/
-```
+1. Run the `APIEv_Server_app.py` file.
+2. Use the following URL format to test strings:
 
-If you ever wish to clear the database, use the following command in CMD:
+    ```
+    http://(Your IP Address):8888/process/?convert_measurements=(the string you wish to test)
+    ```
 
-```
-curl -X DELETE "http://127.0.0.1:8888/clear/"
-```
+3. To view the history database, use this URL format:
 
-- PS: The data is visiable when the server is running you can view it using MongoDBCompass.
-- To View the data while server is running just enter the database through mongodb://localhost:27017/
-- The string_data should appear in a database named api_database.
+    ```
+    http://(Your IP Address):8888/retrieve/
+    ```
+
+4. To clear the database, execute the following command in CMD:
+
+    ```
+    curl -X DELETE "http://127.0.0.1:8888/clear/"
+    ```
+
+---
+
+## Notes
+
+- The data is visible while the server is running. You can view it using MongoDB Compass.
+- To access the database, connect to `mongodb://localhost:27017/`.
+- The string data will appear in a database named `api_database`.
+
+---
+
+## Running the Frontend
+
+1. Ensure the server application is running and the prerequisites are met.
+2. Open the `.html` file in your browser.
+3. Enter the desired string in the input field.
+4. Press the **Submit** button to display the converted value below.
+5. Repeat steps 3 and 4 with a new string to replace the old value.
+6. To view the history of strings, press the **Show History** button.
+7. To clear the history, press the **Clear** button on the page.
